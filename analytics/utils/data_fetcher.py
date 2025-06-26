@@ -4,21 +4,24 @@ import time
 from tenacity import retry, stop_after_attempt, wait_exponential
 from dotenv import load_dotenv
 from pathlib import Path
-from django.utils import timezone
-from analytics.models.matches import Match
-from analytics.models.teams import Team
+from analytics.models import Team, Match
+from analytics.models.teams import update_team_from_api
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Path resolution for .env file
-current_dir = Path(__file__).resolve().parent
-project_root = current_dir.parent
-env_path = project_root / '.env'
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+env_path = BASE_DIR / '.env'
 load_dotenv(env_path)
 
 class DataFetcher:
+    """Handles API communication with PandaScore for data retrieval"""
+
     def __init__(self):
-        """Initialize with both API keys"""
+        # Retrieve API key from environment
         self.pandascore_key = os.environ.get("PANDASCORE_API_KEY", "").strip()
-        # Create requests session
+        # Configure HTTP session
         self.session = requests.Session()
         self.session.headers.update({
             "Accept": "application/json",
@@ -50,12 +53,12 @@ class DataFetcher:
             # Execute API request
             response = self.session.get(url, params=params, headers=headers, timeout=10)
             
-            # Handle API errors
+            # Handle rate limiting
             if response.status_code == 429:
                 reset_time = int(response.headers.get('X-Rate-Limit-Reset', 60))
-                print(f"Rate limited. Sleeping for {reset_time} seconds")
+                logger.warning(f"Rate limited. Sleeping for {reset_time} seconds")
                 time.sleep(reset_time)
-                return self.fetch_live_matches()
+                return self.fetch_matches()
             
             # Raise exception for other HTTP errors
             response.raise_for_status()
@@ -64,7 +67,7 @@ class DataFetcher:
             return self._parse_matches(response.json(), game)
             
         except Exception as e:
-            print(f"PandaScore API error: {str(e)}")
+            logger.error(f"API request failed: {str(e)}")
             return []
 
     def _parse_matches(self, data, game):
@@ -80,30 +83,34 @@ class DataFetcher:
         """
         parsed_matches = []
 
+        if not isinstance(data, list):
+            logger.error(f"Unexpected API response format: {type(data)}")
+            return parsed_matches
+
         for match in data:
             try:
-                # Extract opponent teams
+                # Extract opponents safely
                 opponents = match.get('opponents', [])
-
-                # Get or create team objects from API data
-                if len(opponents) > 0 and 'opponent' in opponents[0]:
-                    team1 = Team.objects.update_from_api(opponents[0]['opponent'])
-                if len(opponents) > 1 and 'opponent' in opponents[1]:
-                    team2 = Team.objects.update_from_api(opponents[1]['opponent'])
                 
-                # Extract next map information if available
+                # Get or create team objects
+                team1 = None
+                if len(opponents) > 0 and 'opponent' in opponents[0]:
+                    team1 = update_team_from_api(opponents[0]['opponent'])
+                
+                team2 = None
+                if len(opponents) > 1 and 'opponent' in opponents[1]:
+                    team2 = update_team_from_api(opponents[1]['opponent'])
+                
+                # Extract next map information
                 next_map = None
                 if match.get('games'):
                     for game_data in match['games']:
                         if game_data.get('status') == 'not_started':
                             next_map = game_data.get('map', {}).get('name')
-                            break  # Break out here as only first upcoming map is needed
-
+                            break
+                
                 # Build match dictionary
                 parsed_matches.append({
-
-                })
-                matches.append({
                     "pandascore_id": match.get('id'),
                     "name": match.get('name', ''),
                     "team1": team1,
@@ -112,13 +119,43 @@ class DataFetcher:
                     "tournament": match.get('league', {}).get('name', ''),
                     "status": match.get('status'),
                     "game": game,
-                    "next_map": next_map,
-                    "raw_data": match  # raw JSON for debugging if needed
-
+                    "next_map": next_map
                 })
             except Exception as e:
-                print(f"Error parsing match: {str(e)}")
+                logger.error(f"Match parsing error: {str(e)}")
+                logger.debug(f"Problematic match data: {match}")
         return parsed_matches
+    
+    def _process_team(self, team_data):
+        """Create or update team from API data"""
+        if not team_data:
+            return None
+        
+        team, created = Team.objects.get_or_create(
+            pandascore_id=team_data['id'],
+            defaults={
+                'name': team_data.get('name', 'Unknown Team'),
+                'slug': team_data.get('slug', ''),
+                'image_url': team_data.get('image_url', '')
+            }
+        )
+
+        # Update existing record if needed
+        if not created:
+            update_fields = []
+            if team.name != team_data.get('name'):
+                team.name = team_data.get('name')
+                update_fields.append('name')
+            if team.slug != team_data.get('slug'):
+                team.slug = team_data.get('slug')
+                update_fields.append('slug')
+            if team.image_url != team_data.get('image_url'):
+                team.image_url = team_data.get('image_url')
+                update_fields.append('image_url')
+            if update_fields:
+                team.save(update_fields=update_fields)
+
+        return team
     
     def save_matches_to_db(self, matches):
         """
@@ -127,100 +164,44 @@ class DataFetcher:
         Args:
             matches: list of match dictionaries from _parse_matches()
         """
-
+        saved_count = 0
         for match_data in matches:
             # Validate required fields
-            if not all([match_data.get('team1'), match_data.get('team2'), match_data.get('start_time')]):
-                print(f"Skipping match due to missing data: {match_data.get('name')}")
+            if not match_data.get('team1'):
+                logger.warning(f"Skipping match {match_data.get('name')}: Missing team1")
                 continue
-
-        # Create or update match record
-        match, created = Match.objects.update_or_create(
-            pandascore_id=match_data['pandascore_id'],
-            defaults={
-                'name': match_data['name'],
-                'team1': match_data['team1'],
-                'team2': match_data['team2'],
-                'start_time': match_data['start_time'],
-                'tournament': match_data.get('tournament', ''),
-                'status': match_data.get('status', 'unknown'),
-                'game': match_data.get('game', 'csgo'),
-                'next_map': match_data.get('next_map', ''),
-            }
-        )
+            if not match_data.get('team2'):
+                logger.warning(f"Skipping match {match_data.get('name')}: Missing team2")
+                continue
+            if not match_data.get('start_time'):
+                logger.warning(f"Skipping match {match_data.get('name')}: Missing start_time")
+                continue
         
-        # Log creation/update
-        if created:
-            print(f"Created new match: {match}")
-        else:
-            print(f"Updated existing match: {match}")
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1))
-    def fetch_odds(self):
-        """Fetch odds from The Odds API"""  
         try:
-            url = "https://api.the-odds-api.com/v4/sports/esports_cs2/odds"
-            params = {
-                "apiKey": self.odds_api_key,
-                "regions": "eu",
-                "markets": "h2h",
-                "oddsFormat": "decimal"
-            }
+            # Handle next_map conversion: None to empty string
+            next_map = match_data.get('next_map', '')
+
+            # Create or update match record
+            match, created = Match.objects.update_or_create(
+                pandascore_id=match_data['pandascore_id'],
+                defaults={
+                    'name': match_data['name'],
+                    'team1': match_data['team1'],
+                    'team2': match_data['team2'],
+                    'start_time': match_data['start_time'],
+                    'tournament': match_data.get('tournament', ''),
+                    'status': match_data.get('status', 'unknown'),
+                    'game': match_data.get('game', 'csgo'),
+                    'next_map': next_map or None
+                }
+            )
             
-            response = self.session.get(url, params=params, timeout=8)
-            
-            # Handle API limits
-            if response.status_code == 429:
-                reset_time = int(response.headers.get('x-requests-reset', 60))
-                print(f"Rate limited. Sleeping for {reset_time}s")
-                time.sleep(reset_time)
-                return self.fetch_odds()
-                
-            response.raise_for_status()
-            
-            # Track usage
-            if 'x-requests-remaining' in response.headers:
-                remaining = response.headers['x-requests-remaining']
-                print(f"Odds API requests remaining: {remaining}")
-            
-            return self._parse_odds_api_response(response.json())
+            action = "Created" if created else "Updated"
+            logger.info(f"{action} match: {match}")
+
+            saved_count += 1
         except Exception as e:
-            print(f"Odds API error: {str(e)}")
-            return pd.DataFrame()
-    
-    def _parse_odds_api_response(self, data):
-        """Parse The Odds API response"""
-        odds_data = []
-        for event in data:
-            event_id = event.get('id')
-            commence_time = event.get('commence_time', '')
-            
-            for bookmaker in event.get('bookmakers', []):
-                bookmaker_name = bookmaker.get('key', '')
-                
-                for market in bookmaker.get('markets', []):
-                    if market.get('key') == 'h2h':
-                        for outcome in market.get('outcomes', []):
-                            odds_data.append({
-                                "event_id": event_id,
-                                "bookmaker": bookmaker_name,
-                                "team": outcome.get('name', ''),
-                                "odds": outcome.get('price', 0.0),
-                                "start_time": commence_time
-                            })
-        return pd.DataFrame(odds_data)
-    
-    def normalize_team_names(self, df, column='team'):
-        """Normalize team names for consistent matching"""
-        # Common name mappings
-        name_map = {
-            'Natus Vincere': 'NAVI',
-            'Team Vitality': 'Vitality',
-            'G2 Esports': 'G2',
-            'FaZe Clan': 'FaZe',
-            'FURIA Esports': 'FURIA'
-        }
-        
-        df[column] = df[column].replace(name_map)
-        df[column] = df[column].str.replace(r'\bEsports\b|\bTeam\b', '', regex=True)
-        df[column] = df[column].str.strip()
-        return df
+            logger.error(f"Failed to save match {match_data.get('name')}: {str(e)}")
+
+        logger.info(f"Successfully saved {saved_count}/{len(matches)} matches")
+        return saved_count > 0

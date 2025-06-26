@@ -7,10 +7,10 @@ sequenceDiagram
     CLI->>PandaScore: Get upcoming matches
     loop For Each Match
         CLI->>Cache: Request team_A stats
-        alt Stats cached
+        alt Stats cached & fresh
             Cache-->>CLI: Return data
-        else Not cached
-            CLI->>PandaScore: Fetch last 5 matches
+        else Not cached or stale
+            CLI->>PandaScore: Fetch last 10 matches
             PandaScore-->>CLI: Return JSON
             CLI->>Cache: Store processed data
         end

@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant CLI as Django CLI
+    participant Core as Prediction Engine
+    participant Data as Data Layer
+    participant API as External APIs
+    
+    CLI->>Core: Execute predict_match
+    Core->>Data: Check local historical data
+    alt Data exists
+        Data-->>Core: Return cached stats
+    else Missing data
+        Core->>API: Fetch from Pandascore/HLTV
+        API-->>Core: Return JSON
+        Core->>Data: Store processed data
+    end
+    Core->>Core: AI analysis (Heuristic → ML)
+    Core-->>CLI: Return prediction insights
+    CLI->>CLI: Display human-readable report

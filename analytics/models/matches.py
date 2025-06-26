@@ -1,5 +1,5 @@
 from django.db import models
-from analytics.models.teams import Team
+from analytics.models import Team
 
 class Match(models.Model):
     # Represents a competitive match between two teams
@@ -40,6 +40,7 @@ class Match(models.Model):
         help_text="Second participating team"
     )
     start_time = models.DateTimeField(
+        db_index=True,
         help_text="Scheduled start time of the match"
     )
     tournament = models.CharField(
@@ -62,6 +63,7 @@ class Match(models.Model):
     next_map = models.CharField(
         max_length=50,
         blank=True,
+        null=True,
         help_text="Next map in the series (needed for tactical analysis)"
     )
     last_updated = models.DateTimeField(
