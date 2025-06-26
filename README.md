@@ -18,7 +18,7 @@ historical data, and fatigue factors to generate winning probabilities.
 ## Prediction Model
 | Factor         | Weight | Calculation Method               |
 |----------------|--------|----------------------------------|
-| Team Form      | 40%    | Win rate (last 5 matches)        |
+| Team Form      | 40%    | Win rate (last 10 matches)        |
 | H2H History    | 30%    | Historical win % vs opponent     |
 | Fatigue        | 30%    | Days since last match            |
 
