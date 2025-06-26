@@ -96,17 +96,14 @@ sequenceDiagram
     end
 ```
 ## Sample Output
-╔══════════════════════════════════════════════════════════════════════╗
-║                          MATCH PREDICTION REPORT                     ║
-╠═══════════════════════════════════════════════╦════════╦═════════════╣
-║ Teams                                         ║ Winner ║ Confidence  ║
-╠═══════════════════════════════════════════════╬════════╬═════════════╣
-║ Fnatic vs NAVI                                ║ NAVI   ║ 78.2%       ║
-║ (Form: 60% vs 80% • H2H: 45% • Fatigue: +2d)  ║        ║             ║
-╚═══════════════════════════════════════════════╩════════╩═════════════╝
+
+| Teams          | Winner | Confidence | Details                      |
+|----------------|--------|------------|------------------------------|
+| Fnatic vs NAVI | NAVI   | 78.2%      | Form: 60% vs 80%             |
+|                |        |            | H2H: 45% • Fatigue: +2d      |
 
 ## Contributing
-Contributions welcome! Please see CONTRIBUTING.md for guidelines.
+Contributions are welcome. Please see CONTRIBUTING.md for guidelines.
 
 ## License
 This project is licensed under the MIT License - see LICENSE.md for details.
