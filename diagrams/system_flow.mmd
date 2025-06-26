@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant CLI
+    participant Cache
+    participant PandaScore
+    participant Engine
+    
+    CLI->>PandaScore: Get upcoming matches
+    loop For Each Match
+        CLI->>Cache: Request team_A stats
+        alt Stats cached
+            Cache-->>CLI: Return data
+        else Not cached
+            CLI->>PandaScore: Fetch last 5 matches
+            PandaScore-->>CLI: Return JSON
+            CLI->>Cache: Store processed data
+        end
+        CLI->>Engine: Analyze {team_A, team_B}
+        Engine-->>CLI: Return prediction
+        CLI->>CLI: Generate report
+    end

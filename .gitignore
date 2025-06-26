@@ -1,4 +1,7 @@
 ﻿.env
 .venv
+.vscode
 __pycache__/
 *.pyc
+project_directory_structure.md
+sample_input_output.py

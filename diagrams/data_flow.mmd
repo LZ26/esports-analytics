@@ -1,0 +1,7 @@
+graph LR
+    A[PandaScore API] -->|Upcoming matches| B(CLI Command)
+    C[PostgreSQL DB] -->|Cached stats| B
+    B -->|Fetch missing| D[Historical Data Pipeline]
+    D -->|Store| C
+    B --> E[Prediction Engine]
+    E --> F[CLI Report]
