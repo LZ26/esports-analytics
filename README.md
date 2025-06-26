@@ -1,1 +1,1 @@
-# esports-match-predictor
+# esports-analytics
