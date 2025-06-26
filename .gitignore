@@ -1,0 +1,10 @@
+﻿.env
+.venv
+.vscode
+__pycache__/
+*.pyc
+analytics/migrations/
+project_directory_structure.md
+sample_input_output.py
+python_commands.sh
+db.sqlite3
