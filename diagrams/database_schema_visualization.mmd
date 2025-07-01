@@ -1,0 +1,49 @@
+erDiagram
+    TEAM ||--o{ TEAM_ANALYSIS : "has"
+    TEAM ||--o{ MATCH : "home_matches"
+    TEAM ||--o{ MATCH : "away_matches"
+    TEAM }|--|{ HISTORICAL_MATCH : "participates_in"
+    HISTORICAL_MATCH }|--|| TEAM : "won_by"
+
+    TEAM {
+        integer pandascore_id PK
+        varchar(100) name
+        varchar(100) slug
+        varchar(500) image_url
+        datetime last_updated
+    }
+    
+    TEAM_ANALYSIS {
+        integer id PK
+        integer team_id FK
+        float last_ten_winrate
+        json h2h_advantage
+        date last_match_data
+        datetime last_updated
+    }
+    
+    MATCH {
+        integer pandascore_id PK
+        varchar(200) name
+        integer team1_id FK
+        integer team2_id FK
+        datetime start_time
+        varchar(200) tournament
+        varchar(20) status
+        varchar(20) game
+        varchar(50) next_map
+        datetime last_updated
+    }
+    
+    HISTORICAL_MATCH {
+        varchar(100) match_id PK
+        datetime date
+        varchar(200) tournament
+        integer winner_id FK
+        datetime last_updated
+    }
+    
+    TEAM_HISTORICAL_MATCH {
+        integer team_id FK
+        varchar(100) match_id FK
+    }

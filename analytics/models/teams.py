@@ -1,5 +1,7 @@
 from django.db import models
+from django.apps import apps
 import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ class TeamManager(models.Manager):
             team_id = api_data['id']
             name = api_data.get('name', 'Unknown Team')
             slug = api_data.get('slug', '')
-            image_url = api_data.get('image_url', '')
+            image_url = api_data.get('image_url') or None
         
         
             # Try to get existing team or create new
@@ -75,6 +77,7 @@ class Team(models.Model):
     image_url = models.URLField(
         max_length=500,
         blank=True,
+        null=True,
         help_text="URL to team's logo image"
     )
     last_updated = models.DateTimeField(
@@ -104,11 +107,34 @@ class TeamAnalysis(models.Model):
         blank=True,
         help_text="Head to head advantage against opponents {opponent_id: win_rate}"
     )
-    last_match_data = models.DateField(
+    last_match_data = models.DateTimeField(
         null=True,
         blank=True,
         help_text="Date of most recent match for fatigure calculation"
     )
+
+    def update_from_history(self):
+        """
+        Recalculates analytics metrics based on historical matches
+        """
+        # Get the last 10 matches
+        last_ten_ids = self.team.historical_matches.order_by('-date').values_list('id', flat=True)[:10]
+        
+        if not last_ten_ids:
+            return  # No matches to process
+        
+        HistoricalMatch = apps.get_model('analytics', 'HistoricalMatch')
+        
+        # Get wins in a single query
+        wins = HistoricalMatch.objects.filter(
+            id__in=last_ten_ids,
+            winner=self.team
+        ).count()
+        
+        total = len(last_ten_ids)
+        self.last_ten_winrate = wins / total
+        self.last_match_data = self.team.historical_matches.order_by('-date').first().date
+        self.save()
 
     def __str__(self):
         return f"Performance analysis for {self.team.name}"

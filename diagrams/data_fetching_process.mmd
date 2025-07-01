@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant DF as DataFetcher
+    participant API as PandaScore
+    participant Cache
+    
+    DF->>Cache: GET team_history_123
+    alt Cache Hit
+        Cache-->>DF: Return data
+    else Cache Miss
+        DF->>API: GET /teams/123/matches
+        API-->>DF: JSON response
+        DF->>DF: Parse matches
+        DF->>Cache: SET team_history_123
+    end
+    DF-->>Caller: Return match data

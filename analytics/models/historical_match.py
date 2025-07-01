@@ -12,17 +12,17 @@ class HistoricalMatch(models.Model):
         help_text="Unique identifier from PandaScore API"
     )
     teams = models.ManyToManyField(
-        Team,
+        'analytics.Team',
         related_name='historical_matches',
         help_text="Teams participating in this match"
     )
     winner = models.ForeignKey(
-        Team,
+        'analytics.Team',
         on_delete=models.CASCADE,
         related_name='historical_wins',
         help_text="Winning team of this match"
     )
-    data = models.DateTimeField(
+    date = models.DateTimeField(
         help_text="Date and time when the match was played"
     )
     tournament = models.CharField(

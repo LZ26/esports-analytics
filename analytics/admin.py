@@ -1,5 +1,5 @@
 from django.contrib import admin
-from analytics.models import Team, TeamAnalysis, Match
+from analytics.models import Team, TeamAnalysis, Match, HistoricalMatch
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
@@ -21,3 +21,5 @@ class MatchAdmin(admin.ModelAdmin):
     search_fields = ('name', 'tournament')
     raw_id_fields = ('team1', 'team2')
     readonly_fields = ('last_updated',)
+
+admin.site.register(HistoricalMatch)

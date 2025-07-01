@@ -220,6 +220,10 @@ class DataFetcher:
         Returns:
             List of parsed match dictionaries or empty list on error
         """
+        api_calls = cache.get('pandascore_api_calls', 0)
+        if api_calls > 900:
+            logger.warning("Near API limit! Stopping requests")
+            return []
 
         cache_key = f"team_history_{team_id}"
 
@@ -250,8 +254,8 @@ class DataFetcher:
                 if parsed := self._parse_historical_match(match):
                     historical_data.append(parsed)
 
-            # Cache results for 6 hours (21600 seconds)
-            cache.set(cache_key, historical_data, 21600)
+            # Cache results for 24 hours (86400 seconds)
+            cache.set(cache_key, historical_data, 86400)
             return historical_data
         
         except Exception as e:
@@ -291,14 +295,20 @@ class DataFetcher:
 
             # Extract winner ID if available
             winner_id = None
+            if api_data.get('winner') and isinstance(api_data['winner'], dict):
+                winner_id = api_data['winner'].get('id')
             if winner := api_data.get('winner'):
                 winner_id = winner.get('id')
 
             # Extract team IDs from opponents
             team_ids = []
+            team_ids = []
             for opponent in api_data.get('opponents', []):
                 if opp_data := opponent.get('opponent'):
-                    team_ids.append(opp_data['id'])
+                    # Create team if missing
+                    team = update_team_from_api(opp_data)
+                    if team:
+                        team_ids.append(team.pandascore_id)
             
             return {
                 'match_id': match_id,
