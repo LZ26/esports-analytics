@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant CLI as CLI Command
+    participant DB as Database
+    participant Cache
+    participant API as PandaScore API
+    
+    CLI->>DB: Find outdated teams
+    loop For Each Team
+        CLI->>Cache: Check team_history_{id}
+        alt Cache Hit
+            Cache-->>CLI: Return matches
+        else Cache Miss
+            CLI->>API: GET /teams/{id}/matches
+            API-->>CLI: Return match data
+            CLI->>Cache: Store data (6h)
+        end
+        
+        CLI->>DB: Create HistoricalMatch
+        CLI->>DB: Calculate winrate
+        CLI->>DB: Update TeamAnalysis
+    end
+    CLI->>CLI: Log completion
