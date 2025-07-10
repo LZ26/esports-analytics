@@ -99,6 +99,8 @@ class TeamAnalysis(models.Model):
         help_text="Associated team for these analytics"
     )
     last_ten_winrate = models.FloatField(
+        null=True,  # Allow NULL in database
+        blank=True,  # Allow blank in forms
         default=0.0,
         help_text="Win rate percentage from last 10 matches (0.0 - 1.0)"
     )
@@ -112,6 +114,7 @@ class TeamAnalysis(models.Model):
         blank=True,
         help_text="Date of most recent match for fatigure calculation"
     )
+    
 
     def update_from_history(self):
         """
