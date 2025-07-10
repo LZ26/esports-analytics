@@ -1,6 +1,6 @@
 # Esports Analytics
 
-![Progress](https://img.shields.io/badge/MVP_Progress-43%25-yellow?style=for-the-badge)
+[![Progress](https://img.shields.io/badge/MVP_Progress-43%25-yellow?style=for-the-badge)]()
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)]()
 [![Django 4.2](https://img.shields.io/badge/django-4.2-brightgreen)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
