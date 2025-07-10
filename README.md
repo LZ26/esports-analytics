@@ -7,6 +7,9 @@
 AI-powered match prediction engine for competitive esports. Analyzes team performance, 
 historical data, and fatigue factors to generate winning probabilities.
 
+## Project Progress
+![Progress](https://img.shields.io/badge/MVP_Progress-43%25-yellow?style=for-the-badge)
+
 ## Features
 - Multi-game support (CS:GO, Dota 2, Valorant)
 - Team performance analytics (form, H2H, fatigue)
@@ -103,7 +106,7 @@ sequenceDiagram
 |                |        |            | H2H: 45% • Fatigue: +2d      |
 
 ## Contributing
-Contributions are welcome. Please see CONTRIBUTING.md for guidelines.
+Contributions are welcome. Please refer to the CONTRIBUTING.md file for guidelines.
 
 ## License
 This project is licensed under the MIT License - see LICENSE.md for details.
